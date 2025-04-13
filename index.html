@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>100.Ai</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Helvetica, Arial, sans-serif;
+        margin: 20px;
+        line-height: 1.6;
+        background-color: #f4f4f4;
+        color: #333;
+      }
+      .container {
+        max-width: 700px;
+        margin: 0 auto;
+        background-color: #fff;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      h1,
+      h2 {
+        color: #0056b3;
+        border-bottom: 2px solid #eee;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+      }
+      label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: bold;
+        color: #555;
+      }
+      textarea {
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 15px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box; 
+        resize: vertical; 
+        min-height: 60px;
+      }
+      button {
+        padding: 10px 18px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.2s ease;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      button:disabled {
+        background-color: #aaa;
+        cursor: not-allowed;
+      }
+      #answerOutput {
+        margin-top: 20px;
+        padding: 15px;
+        border: 1px solid #e0e0e0;
+        background-color: #f9f9f9;
+        min-height: 50px;
+        white-space: pre-wrap;
+        border-radius: 4px;
+        overflow-wrap: break-word; 
+      }
+      #addStatus {
+        margin-top: 15px;
+        padding: 10px;
+        border-radius: 4px;
+        font-weight: bold;
+        display: none; 
+      }
+      .status-success {
+        background-color: #d4edda;
+        color: #155724;
+        border: 1px solid #c3e6cb;
+        display: block; 
+      }
+      .status-error {
+        background-color: #f8d7da;
+        color: #721c24;
+        border: 1px solid #f5c6cb;
+        display: block; 
+      }
+      .loading {
+        display: none; 
+        margin-top: 10px;
+        font-style: italic;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>100.Ai</h1>
+
+      <!-- Chat Section -->
+      <section id="chat-section">
+        <h2>Ask a Question</h2>
+        <form
+          id="chatForm"
+          onsubmit="event.preventDefault(); handleAskQuestion();"
+        >
+          <label for="questionInput">Your Question:</label>
+          <textarea
+            id="questionInput"
+            rows="3"
+            required
+            placeholder="e.g., What is SQLModel?"
+          ></textarea>
+          <button id="askButton" type="submit">Ask</button>
+          <div id="loadingChat" class="loading">Processing...</div>
+        </form>
+        <h3>Answer:</h3>
+        <div id="answerOutput">Your answer will appear here.</div>
+      </section>
+
+      <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee" />
+
+      <!-- Add Knowledge Section -->
+      <section id="add-knowledge-section">
+        <h2>Add Knowledge</h2>
+        <form
+          id="addForm"
+          onsubmit="event.preventDefault(); handleAddKnowledge();"
+        >
+          <label for="knowledgeInput">Text to add:</label>
+          <textarea
+            id="knowledgeInput"
+            rows="4"
+            required
+            placeholder="Enter a piece of text knowledge (min 10 characters)."
+          ></textarea>
+          <button id="addButton" type="submit">Add Knowledge</button>
+          <div id="loadingAdd" class="loading">Adding and re-indexing...</div>
+        </form>
+        <div id="addStatus"></div>
+      </section>
+    </div>
+
+    <script>
+      // Get references to DOM elements
+      const questionInput = document.getElementById("questionInput");
+      const askButton = document.getElementById("askButton");
+      const answerOutput = document.getElementById("answerOutput");
+      const loadingChat = document.getElementById("loadingChat");
+
+      const knowledgeInput = document.getElementById("knowledgeInput");
+      const addButton = document.getElementById("addButton");
+      const addStatus = document.getElementById("addStatus");
+      const loadingAdd = document.getElementById("loadingAdd");
+
+      // API Base URL (make sure this matches where your FastAPI app is running)
+      const API_BASE_URL = "http://127.0.0.1:8000";
+
+      // Function to handle asking a question
+      async function handleAskQuestion() {
+        const questionText = questionInput.value.trim();
+        if (!questionText) {
+          answerOutput.textContent = "Please enter a question.";
+          return;
+        }
+
+        // UI feedback: Start loading
+        askButton.disabled = true;
+        loadingChat.style.display = "block";
+        answerOutput.textContent = ""; // Clear previous answer
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/chat`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ question: questionText }),
+          });
+
+          if (!response.ok) {
+            // Try to get error detail from response body
+            let errorDetail = `HTTP error! Status: ${response.status}`;
+            try {
+              const errorData = await response.json();
+              errorDetail = errorData.detail || errorDetail;
+            } catch (e) {
+              /* Ignore if response is not JSON */
+            }
+            throw new Error(errorDetail);
+          }
+
+          const data = await response.json();
+          answerOutput.textContent = data.answer;
+        } catch (error) {
+          console.error("Error fetching chat answer:", error);
+          answerOutput.textContent = `Error: ${
+            error.message || "Could not fetch answer."
+          }`;
+        } finally {
+          // UI feedback: Stop loading
+          askButton.disabled = false;
+          loadingChat.style.display = "none";
+        }
+      }
+
+      // Function to handle adding knowledge
+      async function handleAddKnowledge() {
+        const knowledgeText = knowledgeInput.value.trim();
+        // Basic validation (matches Pydantic model)
+        if (!knowledgeText || knowledgeText.length < 10) {
+          showAddStatus(
+            "Please enter at least 10 characters of knowledge text.",
+            "error"
+          );
+          return;
+        }
+
+        // UI feedback: Start loading
+        addButton.disabled = true;
+        loadingAdd.style.display = "block";
+        clearAddStatus(); // Clear previous status
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/add-data`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ text: knowledgeText }),
+          });
+
+          let responseData;
+          try {
+            responseData = await response.json();
+          } catch (e) {
+            throw new Error(
+              `Received non-JSON response. Status: ${response.status}`
+            );
+          }
+
+          if (!response.ok) {
+            throw new Error(
+              responseData.detail || `HTTP error! Status: ${response.status}`
+            );
+          }
+
+          showAddStatus(
+            responseData.detail ||
+              "Knowledge added successfully. Index rebuild started.",
+            "success"
+          );
+          knowledgeInput.value = ""; // Clear input field on success
+        } catch (error) {
+          console.error("Error adding knowledge:", error);
+          showAddStatus(
+            `Error: ${error.message || "Could not add knowledge."}`,
+            "error"
+          );
+        } finally {
+          // UI feedback: Stop loading
+          addButton.disabled = false;
+          loadingAdd.style.display = "none";
+        }
+      }
+
+      // Helper function to show status messages for adding knowledge
+      function showAddStatus(message, type) {
+        addStatus.textContent = message;
+        addStatus.className = `status-${type}`; // Sets 'status-success' or 'status-error'
+        addStatus.style.display = "block"; // Ensure it's visible
+      }
+
+      // Helper function to clear the add knowledge status
+      function clearAddStatus() {
+        addStatus.textContent = "";
+        addStatus.className = ""; // Remove status classes
+        addStatus.style.display = "none"; // Hide it
+      }
+    </script>
+  </body>
+</html>

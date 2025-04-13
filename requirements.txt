@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard] 
+sqlmodel
+sqlalchemy 
+asyncpg 
+psycopg2-binary 
+python-dotenv
+transformers
+torch
+faiss-cpu
+sentence-transformers
+accelerate 
+numpy
