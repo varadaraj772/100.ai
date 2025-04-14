@@ -1,3 +1,4 @@
+#embed_and_index.py
 from sentence_transformers import SentenceTransformer
 import faiss
 import pickle

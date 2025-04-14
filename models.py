@@ -1,3 +1,4 @@
+#models.py
 from sqlmodel import SQLModel, Field
 
 class Knowledge(SQLModel, table=True):
